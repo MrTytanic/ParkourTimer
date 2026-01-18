@@ -1,0 +1,14 @@
+reset_location:
+  world: world
+  x: 0.5
+  y: 63
+  z: 0.5
+  yaw: -90
+  pitch: 0
+
+messages:
+  start: "&aParkour Started!"
+  complete: "&bYou completed the Parkour in &e{time}&b!"
+  actionbar: "&eTime: &f{time}"
+  reset: "&cYour parkour progress has been reset!"
+  cancel: "&eYour parkour timer has been cancelled!"
