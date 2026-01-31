@@ -25,7 +25,7 @@ public class ParkourListener implements Listener {
     private final ParkourTimer plugin;
     private final ParkourTimerManager timerManager;
     private final Set<UUID> watchedPlayers = new HashSet<>();
-    private final Set<UUID> restartCooldown = new HashSet<>(); // cooldown tracker
+    private final Set<UUID> restartCooldown = new HashSet<>();
     private final NamespacedKey CONTROL_ITEM_KEY;
 
     private Location resetLocation;
@@ -58,15 +58,20 @@ public class ParkourListener implements Listener {
             long time = timerManager.stop(uuid);
             watchedPlayers.remove(uuid);
 
+            plugin.getLogger().info("Saving parkour run for " + player.getName() + " time=" + time);
+
+            // save run async
+            plugin.getParkourRepository().saveRun(uuid, player.getName(), time);
+
             sendMessage(player, plugin.getConfig()
                     .getString("messages.complete", "&aCompleted! Time: {time}")
                     .replace("{time}", TimeFormatter.formatLong(time))
             );
-            removeControlItems(player);
 
             player.playSound(player.getLocation(),
                     plugin.getConfig().getString("sounds.end", "entity.player.levelup"),
                     1f, 1f);
+            removeControlItems(player);
         }
     }
 

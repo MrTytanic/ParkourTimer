@@ -13,7 +13,8 @@ public class ParkourTimerManager {
     }
 
     public long stop(UUID uuid) {
-        long start = activeTimers.remove(uuid);
+        Long start = activeTimers.remove(uuid);
+        if (start == null) return 0L;
         return System.currentTimeMillis() - start;
     }
 
@@ -22,6 +23,8 @@ public class ParkourTimerManager {
     }
 
     public long getElapsed(UUID uuid) {
-        return System.currentTimeMillis() - activeTimers.get(uuid);
+        Long start = activeTimers.get(uuid);
+        if (start == null) return 0L;
+        return System.currentTimeMillis() - start;
     }
 }

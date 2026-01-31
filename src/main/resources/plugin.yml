@@ -2,3 +2,9 @@ name: ParkourTimer
 version: 1.1.0
 main: com.earthpol.parkourtimer.ParkourTimer
 api-version: 1.20
+
+commands:
+  parkour:
+    description: Parkour commands
+    usage: "/parkour <clear|leaderboard> [player]"
+    permission: parkourtimer.admin

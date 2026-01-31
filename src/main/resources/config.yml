@@ -1,3 +1,10 @@
+database:
+  host: localhost
+  port: 3306
+  name: parkour
+  user: parkour
+  password: password
+
 reset_location:
   world: world
   x: 0.5
@@ -13,5 +20,6 @@ messages:
   reset: "&cYour parkour progress has been reset!"
   cancel: "&eYour parkour timer has been cancelled!"
   timeout: "&cYou took too long!"
+  personal_best: "&6&l🏆 NEW PERSONAL BEST!"
 
 max_time: 300 #5 minutes (300 secs) by default
