@@ -7,4 +7,3 @@ commands:
   parkour:
     description: Parkour commands
     usage: "/parkour <clear|leaderboard> [player]"
-    permission: parkourtimer.admin

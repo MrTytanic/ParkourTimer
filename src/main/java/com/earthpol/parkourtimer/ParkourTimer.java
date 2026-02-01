@@ -6,6 +6,7 @@ import org.bukkit.command.PluginCommand;
 import com.earthpol.parkourtimer.command.ParkourCommand;
 import com.earthpol.parkourtimer.db.ParkourRepository;
 import com.earthpol.parkourtimer.listener.ParkourListener;
+import com.earthpol.parkourtimer.util.ParkourLogger;
 import com.earthpol.parkourtimer.timer.ParkourTimerManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -14,10 +15,40 @@ public final class ParkourTimer extends JavaPlugin {
     private ParkourTimerManager timerManager;
     private Database database;
     private ParkourRepository parkourRepository;
+    private ParkourLogger parkourLogger;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+
+        // initalize logging system
+        parkourLogger = new ParkourLogger(this);
+        parkourLogger.info("Initializing ParkourTimer...");
+
+        try {
+            initializeCoreSystems();
+            registerListenersAndCommands();
+
+            parkourLogger.info("ParkourTimer enabled successfully!");
+        } catch (Exception e) {
+            parkourLogger.error("Fatal error during plugin startup", e);
+            getServer().getPluginManager().disablePlugin(this);
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        // proper shutdown of database pool
+        parkourLogger.info("Shutting down ParkourTimer...");
+
+        if (database != null) {
+            database.shutdown();
+            parkourLogger.info("Database connection pool closed.");
+        }
+    }
+
+    // initalize plugin
+    private void initializeCoreSystems() {
 
         timerManager = new ParkourTimerManager();
 
@@ -30,7 +61,12 @@ public final class ParkourTimer extends JavaPlugin {
         );
 
         Schema.init(database);
+        parkourLogger.info("Database schema verified.");
+
         parkourRepository = new ParkourRepository(this, database);
+    }
+
+    private void registerListenersAndCommands() {
 
         getServer().getPluginManager().registerEvents(new ParkourListener(this), this);
 
@@ -38,14 +74,8 @@ public final class ParkourTimer extends JavaPlugin {
         if (getCommand("parkour") != null) {
             getCommand("parkour").setExecutor(new ParkourCommand(this));
         } else {
-            getLogger().warning("parkour command not found!");
+            parkourLogger.warning("Command 'parkour' not found in plugin.yml!");
         }
-        getLogger().info("ParkourTimer enabled!");
-    }
-
-    @Override
-    public void onDisable() {
-        if (database != null) database.shutdown();
     }
 
     public ParkourTimerManager getTimerManager() {
@@ -54,5 +84,9 @@ public final class ParkourTimer extends JavaPlugin {
 
     public ParkourRepository getParkourRepository() {
         return parkourRepository;
+    }
+
+    public ParkourLogger getParkourLogger() {
+        return parkourLogger;
     }
 }

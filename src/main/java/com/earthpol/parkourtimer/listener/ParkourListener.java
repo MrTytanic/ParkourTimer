@@ -58,7 +58,7 @@ public class ParkourListener implements Listener {
             long time = timerManager.stop(uuid);
             watchedPlayers.remove(uuid);
 
-            plugin.getLogger().info("Saving parkour run for " + player.getName() + " time=" + time);
+            plugin.getParkourLogger().player(uuid, player.getName(), "FINISH_RUN time=" + time);
 
             // save run async
             plugin.getParkourRepository().saveRun(uuid, player.getName(), time);
@@ -91,6 +91,7 @@ public class ParkourListener implements Listener {
 
             watchedPlayers.add(uuid);
             timerManager.start(uuid);
+            plugin.getParkourLogger().player(uuid, player.getName(), "START_RUN");
 
             sendMessage(player, plugin.getConfig().getString("messages.start", "&aTimer started!"));
             giveControlItems(player);
@@ -120,6 +121,12 @@ public class ParkourListener implements Listener {
         watchedPlayers.remove(uuid);
         restartCooldown.remove(uuid);
         removeControlItems(event.getPlayer());
+
+        if (timerManager.isRunning(uuid)) {
+            plugin.getParkourLogger().player(uuid,
+                    event.getPlayer().getName(),
+                    "QUIT_DURING_RUN");
+        }
     }
 
     // item protection
@@ -153,6 +160,8 @@ public class ParkourListener implements Listener {
             return;
         }
 
+        plugin.getParkourLogger().player(uuid, player.getName(), "RESTART_RUN");
+
         // add to cooldown
         restartCooldown.add(uuid);
         Bukkit.getScheduler().runTaskLater(plugin, () -> restartCooldown.remove(uuid), 20L); // 1 second
@@ -173,6 +182,7 @@ public class ParkourListener implements Listener {
         UUID uuid = player.getUniqueId();
         timerManager.stop(uuid);
         watchedPlayers.remove(uuid);
+        plugin.getParkourLogger().player(uuid, player.getName(), "CANCEL_RUN");
 
         // play anvil sound
         player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 1f);
@@ -208,6 +218,7 @@ public class ParkourListener implements Listener {
                     player.sendMessage(color(msg));
                     player.playSound(player.getLocation(), Sound.ENTITY_SILVERFISH_DEATH, 1f, 1f);
 
+                    plugin.getParkourLogger().player(uuid, player.getName(), "TIMEOUT");
                     continue;
                 }
 
