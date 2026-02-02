@@ -6,6 +6,7 @@ import org.bukkit.command.PluginCommand;
 import com.earthpol.parkourtimer.command.ParkourCommand;
 import com.earthpol.parkourtimer.db.ParkourRepository;
 import com.earthpol.parkourtimer.listener.ParkourListener;
+import com.earthpol.parkourtimer.service.ActionBarService;
 import com.earthpol.parkourtimer.util.ParkourLogger;
 import com.earthpol.parkourtimer.timer.ParkourTimerManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -16,6 +17,7 @@ public final class ParkourTimer extends JavaPlugin {
     private Database database;
     private ParkourRepository parkourRepository;
     private ParkourLogger parkourLogger;
+    private ActionBarService actionBarService;
 
     @Override
     public void onEnable() {
@@ -28,6 +30,9 @@ public final class ParkourTimer extends JavaPlugin {
         try {
             initializeCoreSystems();
             registerListenersAndCommands();
+
+            actionBarService = new ActionBarService(this);
+            actionBarService.start();
 
             parkourLogger.info("ParkourTimer enabled successfully!");
         } catch (Exception e) {

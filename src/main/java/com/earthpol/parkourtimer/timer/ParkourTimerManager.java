@@ -3,6 +3,7 @@ package com.earthpol.parkourtimer.timer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 
 public class ParkourTimerManager {
 
@@ -16,6 +17,10 @@ public class ParkourTimerManager {
         Long start = activeTimers.remove(uuid);
         if (start == null) return 0L;
         return System.currentTimeMillis() - start;
+    }
+
+    public Set<UUID> getRunningPlayers() {
+        return activeTimers.keySet();
     }
 
     public boolean isRunning(UUID uuid) {

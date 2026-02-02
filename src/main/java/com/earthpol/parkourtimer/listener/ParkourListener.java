@@ -39,7 +39,6 @@ public class ParkourListener implements Listener {
         this.CONTROL_ITEM_KEY = new NamespacedKey(plugin, "control_item");
 
         loadResetLocation();
-        startActionBarUpdater();
     }
 
     // end of parkour movement check
@@ -193,42 +192,6 @@ public class ParkourListener implements Listener {
 
     private void teleportToReset(Player player) {
         if (resetLocation != null) player.teleport(resetLocation);
-    }
-
-    private void startActionBarUpdater() {
-        long maxTime = plugin.getConfig().getLong("max_time", 300) * 1000;
-
-        plugin.getServer().getScheduler().runTaskTimer(plugin, task -> {
-            if (watchedPlayers.isEmpty()) return;
-
-            for (UUID uuid : new HashSet<>(watchedPlayers)) {
-                Player player = Bukkit.getPlayer(uuid);
-                if (player == null || !timerManager.isRunning(uuid)) continue;
-
-                long elapsed = timerManager.getElapsed(uuid);
-
-                // timeout
-                if (elapsed >= maxTime) {
-                    timerManager.stop(uuid);
-                    watchedPlayers.remove(uuid);
-                    removeControlItems(player);
-
-                    // timout message + sound
-                    String msg = plugin.getConfig().getString("messages.timeout", "&cYou took too long!");
-                    player.sendMessage(color(msg));
-                    player.playSound(player.getLocation(), Sound.ENTITY_SILVERFISH_DEATH, 1f, 1f);
-
-                    plugin.getParkourLogger().player(uuid, player.getName(), "TIMEOUT");
-                    continue;
-                }
-
-                // action bar display
-                String time = TimeFormatter.format(elapsed);
-                String bar = plugin.getConfig().getString("messages.actionbar", "&aTime: {time}")
-                        .replace("{time}", time);
-                player.sendActionBar(color(bar));
-            }
-        }, 0L, 2L);
     }
 
     private void giveControlItems(Player player) {
