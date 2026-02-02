@@ -1,6 +1,7 @@
 package com.earthpol.parkourtimer.listener;
 
 import com.earthpol.parkourtimer.ParkourTimer;
+import com.earthpol.parkourtimer.service.ControlItemService;
 import com.earthpol.parkourtimer.timer.ParkourTimerManager;
 import com.earthpol.parkourtimer.util.TimeFormatter;
 import net.kyori.adventure.text.Component;
@@ -13,8 +14,6 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -24,34 +23,28 @@ public class ParkourListener implements Listener {
 
     private final ParkourTimer plugin;
     private final ParkourTimerManager timerManager;
+    private final ControlItemService controlService;
+
     private final Set<UUID> watchedPlayers = new HashSet<>();
-    private final Set<UUID> restartCooldown = new HashSet<>();
-    private final NamespacedKey CONTROL_ITEM_KEY;
-
     private Location resetLocation;
-
-    private static final int RESTART_SLOT = 3;
-    private static final int CANCEL_SLOT = 5;
 
     public ParkourListener(ParkourTimer plugin) {
         this.plugin = plugin;
         this.timerManager = plugin.getTimerManager();
-        this.CONTROL_ITEM_KEY = new NamespacedKey(plugin, "control_item");
+        this.controlService = new ControlItemService(plugin);
 
         loadResetLocation();
     }
 
-    // end of parkour movement check
+    // parkour movement
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if (event.getTo() == null) return;
-        if (event.getFrom().getBlock().equals(event.getTo().getBlock())) return;
+        if (event.getTo() == null || event.getFrom().getBlock().equals(event.getTo().getBlock())) return;
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
-        if (!watchedPlayers.contains(uuid)) return;
-        if (!timerManager.isRunning(uuid)) return;
+        if (!watchedPlayers.contains(uuid) || !timerManager.isRunning(uuid)) return;
 
         if (event.getTo().getBlock().getType() == Material.HEAVY_WEIGHTED_PRESSURE_PLATE) {
             long time = timerManager.stop(uuid);
@@ -70,7 +63,8 @@ public class ParkourListener implements Listener {
             player.playSound(player.getLocation(),
                     plugin.getConfig().getString("sounds.end", "entity.player.levelup"),
                     1f, 1f);
-            removeControlItems(player);
+
+            controlService.removeControlItems(player);
         }
     }
 
@@ -93,7 +87,7 @@ public class ParkourListener implements Listener {
             plugin.getParkourLogger().player(uuid, player.getName(), "START_RUN");
 
             sendMessage(player, plugin.getConfig().getString("messages.start", "&aTimer started!"));
-            giveControlItems(player);
+            controlService.giveControlItems(player);
 
             player.playSound(player.getLocation(),
                     plugin.getConfig().getString("sounds.start", "entity.experience_orb.pickup"),
@@ -101,13 +95,16 @@ public class ParkourListener implements Listener {
             return;
         }
 
-        // control items (restart/cancel)
+        // control items
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        if (item == null || !timerManager.isRunning(uuid) || !isControlItem(item)) return;
+        if (item == null || !timerManager.isRunning(uuid) || !controlService.isControlItem(item)) return;
 
         int slot = player.getInventory().getHeldItemSlot();
-        if (slot == RESTART_SLOT) handleRestart(player);
-        else if (slot == CANCEL_SLOT) handleCancel(player);
+        if (slot == ControlItemService.RESTART_SLOT) {
+            controlService.handleRestart(player, () -> teleportToReset(player));
+        } else if (slot == ControlItemService.CANCEL_SLOT) {
+            controlService.handleCancel(player);
+        }
 
         event.setCancelled(true);
     }
@@ -115,111 +112,45 @@ public class ParkourListener implements Listener {
     // cleanup
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
         timerManager.stop(uuid);
         watchedPlayers.remove(uuid);
-        restartCooldown.remove(uuid);
-        removeControlItems(event.getPlayer());
+        controlService.removeControlItems(player);
 
         if (timerManager.isRunning(uuid)) {
-            plugin.getParkourLogger().player(uuid,
-                    event.getPlayer().getName(),
-                    "QUIT_DURING_RUN");
+            plugin.getParkourLogger().player(uuid, player.getName(), "QUIT_DURING_RUN");
         }
     }
 
     // item protection
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
-        if (isControlItem(event.getItemDrop().getItemStack())) event.setCancelled(true);
+        if (controlService.isControlItem(event.getItemDrop().getItemStack())) event.setCancelled(true);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if ((event.getCurrentItem() != null && isControlItem(event.getCurrentItem())) ||
-                (event.getSlot() == 40 && event.getCursor() != null && isControlItem(event.getCursor()))) {
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+        if ((current != null && controlService.isControlItem(current)) ||
+                (event.getSlot() == 40 && cursor != null && controlService.isControlItem(cursor))) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
-        if (isControlItem(event.getMainHandItem()) || isControlItem(event.getOffHandItem())) {
+        if (controlService.isControlItem(event.getMainHandItem()) || controlService.isControlItem(event.getOffHandItem())) {
             event.setCancelled(true);
         }
     }
 
     // helpers
-    private void handleRestart(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        // cooldown check
-        if (restartCooldown.contains(uuid)) {
-            sendMessage(player, "&cPlease wait a moment before restarting again!");
-            return;
-        }
-
-        plugin.getParkourLogger().player(uuid, player.getName(), "RESTART_RUN");
-
-        // add to cooldown
-        restartCooldown.add(uuid);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> restartCooldown.remove(uuid), 20L); // 1 second
-
-        // play teleport sound
-        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
-
-        // stop timer and cleanup
-        timerManager.stop(uuid);
-        watchedPlayers.remove(uuid);
-
-        sendMessage(player, plugin.getConfig().getString("messages.reset", "&cTimer reset!"));
-        teleportToReset(player);
-        removeControlItems(player);
-    }
-
-    private void handleCancel(Player player) {
-        UUID uuid = player.getUniqueId();
-        timerManager.stop(uuid);
-        watchedPlayers.remove(uuid);
-        plugin.getParkourLogger().player(uuid, player.getName(), "CANCEL_RUN");
-
-        // play anvil sound
-        player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 1f);
-
-        sendMessage(player, plugin.getConfig().getString("messages.cancel", "&cTimer cancelled!"));
-        removeControlItems(player);
-    }
 
     private void teleportToReset(Player player) {
         if (resetLocation != null) player.teleport(resetLocation);
-    }
-
-    private void giveControlItems(Player player) {
-        player.getInventory().setItem(RESTART_SLOT, createItem(Material.DIAMOND_BLOCK, "&b&lRestart"));
-        player.getInventory().setItem(CANCEL_SLOT, createItem(Material.REDSTONE_BLOCK, "&4&lCancel"));
-    }
-
-    private void removeControlItems(Player player) {
-        player.getInventory().setItem(RESTART_SLOT, null);
-        player.getInventory().setItem(CANCEL_SLOT, null);
-        player.getInventory().setItemInOffHand(null);
-    }
-
-    private ItemStack createItem(Material mat, String name) {
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
-            meta.getPersistentDataContainer().set(CONTROL_ITEM_KEY, PersistentDataType.BYTE, (byte) 1);
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-
-    private boolean isControlItem(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return false;
-        ItemMeta meta = item.getItemMeta();
-        return meta.getPersistentDataContainer().has(CONTROL_ITEM_KEY, PersistentDataType.BYTE);
     }
 
     private void sendMessage(Player player, String msg) {
