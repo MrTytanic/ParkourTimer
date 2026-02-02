@@ -3,9 +3,6 @@ package com.earthpol.parkourtimer.listener;
 import com.earthpol.parkourtimer.ParkourTimer;
 import com.earthpol.parkourtimer.service.ControlItemService;
 import com.earthpol.parkourtimer.timer.ParkourTimerManager;
-import com.earthpol.parkourtimer.util.TimeFormatter;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -51,31 +48,23 @@ public class ParkourListener implements Listener {
             watchedPlayers.remove(uuid);
 
             plugin.getParkourLogger().player(uuid, player.getName(), "FINISH_RUN time=" + time);
-
-            // save run async
             plugin.getParkourRepository().saveRun(uuid, player.getName(), time);
 
-            sendMessage(player, plugin.getConfig()
-                    .getString("messages.complete", "&aCompleted! Time: {time}")
-                    .replace("{time}", TimeFormatter.formatLong(time))
-            );
-
-            player.playSound(player.getLocation(),
-                    plugin.getConfig().getString("sounds.end", "entity.player.levelup"),
-                    1f, 1f);
+            // delegate messaging and sound
+            controlService.handleFinish(player, time);
 
             controlService.removeControlItems(player);
         }
     }
 
-    // starting parkour check
+    // player interaction
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        // start timer on light weighted pressure plate
+        // start timer
         if (event.getAction() == Action.PHYSICAL &&
                 event.getClickedBlock() != null &&
                 event.getClickedBlock().getType() == Material.LIGHT_WEIGHTED_PRESSURE_PLATE) {
@@ -86,12 +75,9 @@ public class ParkourListener implements Listener {
             timerManager.start(uuid);
             plugin.getParkourLogger().player(uuid, player.getName(), "START_RUN");
 
-            sendMessage(player, plugin.getConfig().getString("messages.start", "&aTimer started!"));
-            controlService.giveControlItems(player);
+            // delegate messaging, sound, and control items
+            controlService.handleStart(player);
 
-            player.playSound(player.getLocation(),
-                    plugin.getConfig().getString("sounds.start", "entity.experience_orb.pickup"),
-                    1f, 1f);
             return;
         }
 
@@ -124,41 +110,25 @@ public class ParkourListener implements Listener {
         }
     }
 
-    // item protection
+    // delegate item protections
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
-        if (controlService.isControlItem(event.getItemDrop().getItemStack())) event.setCancelled(true);
+        controlService.protectDrop(event);
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        ItemStack current = event.getCurrentItem();
-        ItemStack cursor = event.getCursor();
-        if ((current != null && controlService.isControlItem(current)) ||
-                (event.getSlot() == 40 && cursor != null && controlService.isControlItem(cursor))) {
-            event.setCancelled(true);
-        }
+        controlService.protectInventoryClick(event);
     }
 
     @EventHandler
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
-        if (controlService.isControlItem(event.getMainHandItem()) || controlService.isControlItem(event.getOffHandItem())) {
-            event.setCancelled(true);
-        }
+        controlService.protectSwapHand(event);
     }
 
     // helpers
-
     private void teleportToReset(Player player) {
         if (resetLocation != null) player.teleport(resetLocation);
-    }
-
-    private void sendMessage(Player player, String msg) {
-        if (msg != null) player.sendMessage(color(msg));
-    }
-
-    private Component color(String msg) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(msg);
     }
 
     private void loadResetLocation() {

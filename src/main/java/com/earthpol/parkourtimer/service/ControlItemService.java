@@ -2,6 +2,7 @@ package com.earthpol.parkourtimer.service;
 
 import com.earthpol.parkourtimer.ParkourTimer;
 import com.earthpol.parkourtimer.timer.ParkourTimerManager;
+import com.earthpol.parkourtimer.util.TimeFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
@@ -9,6 +10,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -50,6 +54,22 @@ public class ControlItemService {
         return meta.getPersistentDataContainer().has(CONTROL_ITEM_KEY, PersistentDataType.BYTE);
     }
 
+    // called when player starts parkour
+    public void handleStart(Player player) {
+        giveControlItems(player);
+        sendMessage(player, plugin.getConfig().getString("messages.start", "&aTimer started!"));
+        playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
+    }
+
+    // called when player finishes parkour
+    public void handleFinish(Player player, long time) {
+        sendMessage(player,
+                plugin.getConfig().getString("messages.complete", "&aCompleted! Time: {time}")
+                        .replace("{time}", TimeFormatter.formatLong(time))
+        );
+        playSound(player, Sound.ENTITY_PLAYER_LEVELUP);
+    }
+
     public void handleRestart(Player player, Runnable teleportCallback) {
         UUID uuid = player.getUniqueId();
 
@@ -89,6 +109,25 @@ public class ControlItemService {
     }
 
     // helpers
+
+    public void protectDrop(PlayerDropItemEvent event) {
+        if (isControlItem(event.getItemDrop().getItemStack())) event.setCancelled(true);
+    }
+
+    public void protectInventoryClick(InventoryClickEvent event) {
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+        if ((current != null && isControlItem(current)) ||
+                (event.getSlot() == 40 && cursor != null && isControlItem(cursor))) {
+            event.setCancelled(true);
+        }
+    }
+
+    public void protectSwapHand(PlayerSwapHandItemsEvent event) {
+        if (isControlItem(event.getMainHandItem()) || isControlItem(event.getOffHandItem())) {
+            event.setCancelled(true);
+        }
+    }
 
     private ItemStack createItem(Material mat, String name) {
         ItemStack item = new ItemStack(mat);
