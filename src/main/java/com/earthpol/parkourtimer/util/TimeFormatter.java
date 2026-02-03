@@ -18,7 +18,6 @@ public class TimeFormatter {
         long totalSeconds = ms / 1000;
         long minutes = totalSeconds / 60;
         long seconds = totalSeconds % 60;
-        long centiseconds = (ms % 1000) / 10;
 
         StringBuilder sb = new StringBuilder();
         if (minutes > 0) sb.append(minutes).append(" minute").append(minutes > 1 ? "s" : "").append(" ");

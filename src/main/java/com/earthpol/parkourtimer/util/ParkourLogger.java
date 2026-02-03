@@ -36,12 +36,6 @@ public class ParkourLogger {
         if (debug) t.printStackTrace();
     }
 
-    public void debug(String message) {
-        if (debug) {
-            log(Level.INFO, "[DEBUG] " + message);
-        }
-    }
-
     public void player(UUID uuid, String playerName, String action) {
         log(Level.INFO, formatPlayer(uuid, playerName, action));
     }

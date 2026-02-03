@@ -117,8 +117,7 @@ public class ControlItemService {
     public void protectInventoryClick(InventoryClickEvent event) {
         ItemStack current = event.getCurrentItem();
         ItemStack cursor = event.getCursor();
-        if ((current != null && isControlItem(current)) ||
-                (event.getSlot() == 40 && cursor != null && isControlItem(cursor))) {
+        if (current != null && isControlItem(current) || event.getSlot() == 40 && isControlItem(cursor)) {
             event.setCancelled(true);
         }
     }

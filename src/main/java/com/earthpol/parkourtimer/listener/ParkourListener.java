@@ -36,7 +36,7 @@ public class ParkourListener implements Listener {
     // parkour movement
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if (event.getTo() == null || event.getFrom().getBlock().equals(event.getTo().getBlock())) return;
+        if (event.getFrom().getBlock().equals(event.getTo().getBlock())) return;
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
@@ -83,7 +83,7 @@ public class ParkourListener implements Listener {
 
         // control items
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        if (item == null || !timerManager.isRunning(uuid) || !controlService.isControlItem(item)) return;
+        if (item.getType() == Material.AIR || !timerManager.isRunning(uuid) || !controlService.isControlItem(item)) return;
 
         int slot = player.getInventory().getHeldItemSlot();
         if (slot == ControlItemService.RESTART_SLOT) {

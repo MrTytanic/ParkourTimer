@@ -2,7 +2,6 @@ package com.earthpol.parkourtimer;
 
 import com.earthpol.parkourtimer.db.Database;
 import com.earthpol.parkourtimer.db.Schema;
-import org.bukkit.command.PluginCommand;
 import com.earthpol.parkourtimer.command.ParkourCommand;
 import com.earthpol.parkourtimer.db.ParkourRepository;
 import com.earthpol.parkourtimer.listener.ParkourListener;
@@ -11,13 +10,14 @@ import com.earthpol.parkourtimer.util.ParkourLogger;
 import com.earthpol.parkourtimer.timer.ParkourTimerManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Objects;
+
 public final class ParkourTimer extends JavaPlugin {
 
     private ParkourTimerManager timerManager;
     private Database database;
     private ParkourRepository parkourRepository;
     private ParkourLogger parkourLogger;
-    private ActionBarService actionBarService;
 
     @Override
     public void onEnable() {
@@ -31,7 +31,7 @@ public final class ParkourTimer extends JavaPlugin {
             initializeCoreSystems();
             registerListenersAndCommands();
 
-            actionBarService = new ActionBarService(this);
+            ActionBarService actionBarService = new ActionBarService(this);
             actionBarService.start();
 
             parkourLogger.info("ParkourTimer enabled successfully!");
@@ -77,7 +77,7 @@ public final class ParkourTimer extends JavaPlugin {
 
         // register parkour commands
         if (getCommand("parkour") != null) {
-            getCommand("parkour").setExecutor(new ParkourCommand(this));
+            Objects.requireNonNull(getCommand("parkour")).setExecutor(new ParkourCommand(this));
         } else {
             parkourLogger.warning("Command 'parkour' not found in plugin.yml!");
         }

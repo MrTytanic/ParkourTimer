@@ -44,7 +44,7 @@ public class ActionBarService {
 
     private void handleTimeout(Player player, UUID uuid) {
         timerManager.stop(uuid);
-        notifyPlayer(player, timeoutMessage, Sound.ENTITY_SILVERFISH_DEATH);
+        notifyPlayer(player, timeoutMessage);
         plugin.getParkourLogger().player(uuid, player.getName(), "TIMEOUT");
     }
 
@@ -53,9 +53,9 @@ public class ActionBarService {
         player.sendActionBar(color(actionBarFormat.replace("{time}", time)));
     }
 
-    private void notifyPlayer(Player player, String message, Sound sound) {
+    private void notifyPlayer(Player player, String message) {
         player.sendMessage(color(message));
-        player.playSound(player.getLocation(), sound, 1f, 1f);
+        player.playSound(player.getLocation(), Sound.ENTITY_SILVERFISH_DEATH, 1f, 1f);
     }
 
     private Player getOnlinePlayer(UUID uuid) {

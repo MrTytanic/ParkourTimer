@@ -1,7 +1,6 @@
 package com.earthpol.parkourtimer.db;
 
 import com.earthpol.parkourtimer.ParkourTimer;
-import com.earthpol.parkourtimer.timer.ParkourTimerManager;
 import com.earthpol.parkourtimer.util.TimeFormatter;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;

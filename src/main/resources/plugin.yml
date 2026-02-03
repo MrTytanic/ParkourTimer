@@ -1,5 +1,5 @@
 name: ParkourTimer
-version: 1.1.0
+version: 1.1.1
 main: com.earthpol.parkourtimer.ParkourTimer
 api-version: 1.20
 
