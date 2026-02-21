@@ -59,6 +59,8 @@ database:
 - **Current Version:** 1.1.0  
 - **API Version:** 1.20  
 
+## Planned Features
+- Checkpoints
 ---
 
 ## Author
