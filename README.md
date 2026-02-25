@@ -60,7 +60,10 @@ database:
 - **API Version:** 1.20  
 
 ## Planned Features
-- Checkpoints
+- Leaderboards
+- Challenge Mode
+- Multiple Configurable Courses
+
 ---
 
 ## Author
