@@ -19,6 +19,14 @@ start_location:
   y: 63
   z: 0.5
 
+checkpoint_1:
+  world: world
+  x: 0.5
+  y: 63
+  z: 0.5
+  yaw: -90
+  pitch: 0
+
 end_location:
   world: world
   x: 0.5
@@ -33,6 +41,7 @@ messages:
   cancel: "&eYour parkour timer has been cancelled!"
   timeout: "&cYou took too long!"
   personal_best: "&6&l🏆 NEW PERSONAL BEST!"
+  checkpoint: "&aYou reached a new checkpoint!"
 
 max_time: 300 #5 minutes (300 secs) by default
 

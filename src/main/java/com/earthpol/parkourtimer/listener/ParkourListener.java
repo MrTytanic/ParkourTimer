@@ -11,10 +11,9 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.Vector;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class ParkourListener implements Listener {
 
@@ -23,6 +22,8 @@ public class ParkourListener implements Listener {
     private final ControlItemService controlService;
 
     private final Set<UUID> watchedPlayers = new HashSet<>();
+    private final Map<UUID, Location> lastCheckpoint = new HashMap<>();
+    private final List<Location> checkpoints = new ArrayList<>();
     private Location resetLocation;
     private Location startLocation;
     private Location endLocation;
@@ -31,7 +32,7 @@ public class ParkourListener implements Listener {
         this.plugin = plugin;
         this.timerManager = plugin.getTimerManager();
         this.controlService = new ControlItemService(plugin);
-        
+
         loadLocations();
     }
 
@@ -44,19 +45,38 @@ public class ParkourListener implements Listener {
         UUID uuid = player.getUniqueId();
         Location toBlock = event.getTo().getBlock().getLocation();
 
-        // START CHECK
+        // start check
         if (!timerManager.isRunning(uuid) && isSameBlock(toBlock, startLocation)) {
             watchedPlayers.add(uuid);
             timerManager.start(uuid);
+
+            // default lastCheckpoint to resetLocation (not startLocation)
+            lastCheckpoint.put(uuid, resetLocation);
+
             plugin.getParkourLogger().player(uuid, player.getName(), "START_RUN");
             controlService.handleStart(player);
             return;
         }
 
-        // FINISH CHECK
+        // checkpoints
+        for (Location checkpoint : checkpoints) {
+            if (isSameBlock(toBlock, checkpoint)) {
+                if (!checkpoint.equals(lastCheckpoint.get(uuid))) {
+                    lastCheckpoint.put(uuid, checkpoint);
+
+                    // send message from config
+                    String msg = plugin.getConfig().getString("messages.checkpoint", "&aNew checkpoint reached!");
+                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
+                }
+                break;
+            }
+        }
+
+        // finish check
         if (watchedPlayers.contains(uuid) && timerManager.isRunning(uuid) && isSameBlock(toBlock, endLocation)) {
             long time = timerManager.stop(uuid);
             watchedPlayers.remove(uuid);
+            lastCheckpoint.remove(uuid);
 
             plugin.getParkourLogger().player(uuid, player.getName(), "FINISH_RUN time=" + time);
             plugin.getParkourRepository().saveRun(uuid, player.getName(), time);
@@ -80,6 +100,8 @@ public class ParkourListener implements Listener {
         int slot = player.getInventory().getHeldItemSlot();
         if (slot == ControlItemService.RESTART_SLOT) {
             controlService.handleRestart(player, () -> teleportToReset(player));
+        } else if (slot == ControlItemService.CHECKPOINT_SLOT) {
+            controlService.handleCheckpoint(player, () -> teleportToCheckpoint(player));
         } else if (slot == ControlItemService.CANCEL_SLOT) {
             controlService.handleCancel(player);
         }
@@ -95,6 +117,7 @@ public class ParkourListener implements Listener {
 
         timerManager.stop(uuid);
         watchedPlayers.remove(uuid);
+        lastCheckpoint.remove(uuid);
         controlService.removeControlItems(player);
 
         if (timerManager.isRunning(uuid)) {
@@ -121,6 +144,23 @@ public class ParkourListener implements Listener {
     // helpers
     private void teleportToReset(Player player) {
         if (resetLocation != null) player.teleport(resetLocation);
+    }
+
+    private void teleportToCheckpoint(Player player) {
+        UUID uuid = player.getUniqueId();
+        Location loc = lastCheckpoint.get(uuid);
+
+        // if no checkpoint has been reached yet, default to resetLocation
+        if (loc == null) {
+            loc = resetLocation;
+            lastCheckpoint.put(uuid, loc); // make sure future checkpoint uses this as base
+        }
+
+        if (loc != null) {
+            player.teleport(loc);
+            player.setFallDistance(0);
+            player.setVelocity(new Vector(0, 0, 0));
+        }
     }
 
     private void loadLocations() {
@@ -157,6 +197,25 @@ public class ParkourListener implements Listener {
                     plugin.getConfig().getDouble("end_location.y"),
                     plugin.getConfig().getDouble("end_location.z")
             );
+        }
+
+        // Load checkpoints dynamically
+        checkpoints.clear();
+        int i = 1;
+        while (plugin.getConfig().contains("checkpoint_" + i + ".world")) {
+            World w = Bukkit.getWorld(plugin.getConfig().getString("checkpoint_" + i + ".world"));
+            if (w != null) {
+                Location loc = new Location(
+                        w,
+                        plugin.getConfig().getDouble("checkpoint_" + i + ".x"),
+                        plugin.getConfig().getDouble("checkpoint_" + i + ".y"),
+                        plugin.getConfig().getDouble("checkpoint_" + i + ".z"),
+                        (float) plugin.getConfig().getDouble("checkpoint_" + i + ".yaw", 0),
+                        (float) plugin.getConfig().getDouble("checkpoint_" + i + ".pitch", 0)
+                );
+                checkpoints.add(loc);
+            }
+            i++;
         }
     }
 

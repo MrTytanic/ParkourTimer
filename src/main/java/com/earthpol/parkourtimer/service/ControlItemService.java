@@ -28,6 +28,7 @@ public class ControlItemService {
     private final Set<UUID> restartCooldown = new HashSet<>();
 
     public static final int RESTART_SLOT = 3;
+    public static final int CHECKPOINT_SLOT = 4;
     public static final int CANCEL_SLOT = 5;
 
     public ControlItemService(ParkourTimer plugin) {
@@ -40,11 +41,13 @@ public class ControlItemService {
 
     public void giveControlItems(Player player) {
         player.getInventory().setItem(RESTART_SLOT, createItem(Material.DIAMOND_BLOCK, "&b&lRestart"));
+        player.getInventory().setItem(CHECKPOINT_SLOT, createItem(Material.IRON_BLOCK, "&e&lCheckpoint"));
         player.getInventory().setItem(CANCEL_SLOT, createItem(Material.REDSTONE_BLOCK, "&4&lCancel"));
     }
 
     public void removeControlItems(Player player) {
         player.getInventory().setItem(RESTART_SLOT, null);
+        player.getInventory().setItem(CHECKPOINT_SLOT, null);
         player.getInventory().setItem(CANCEL_SLOT, null);
         player.getInventory().setItemInOffHand(null);
     }
@@ -104,6 +107,14 @@ public class ControlItemService {
                 player.setFallDistance(0);
                 player.setVelocity(new Vector(0, 0, 0));
             });
+        }
+    }
+
+    // called when player goes to latest checkpoint
+    public void handleCheckpoint(Player player, Runnable teleportCallback) {
+        playSound(player, Sound.ENTITY_ENDERMAN_TELEPORT);
+        if (teleportCallback != null) {
+            Bukkit.getScheduler().runTask(plugin, teleportCallback);
         }
     }
 
