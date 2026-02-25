@@ -19,7 +19,6 @@ public class ParkourCommand implements CommandExecutor, TabCompleter {
 
     public ParkourCommand(ParkourTimer plugin) {
         this.plugin = plugin;
-        // Register as both executor and tab completer
         plugin.getCommand("parkour").setExecutor(this);
         plugin.getCommand("parkour").setTabCompleter(this);
     }
@@ -36,24 +35,14 @@ public class ParkourCommand implements CommandExecutor, TabCompleter {
 
         switch (sub) {
             case "clear" -> {
-
                 if (args.length < 2) {
                     sender.sendMessage("§cUsage: /parkour clear <player>");
                     return true;
                 }
 
                 OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(args[1]);
-
-                if (offlineTarget == null ||
-                        (!offlineTarget.hasPlayedBefore() && !offlineTarget.isOnline())) {
-                    sender.sendMessage("§cPlayer not found!");
-                    return true;
-                }
-
                 UUID uuid = offlineTarget.getUniqueId();
-                String targetName = offlineTarget.getName() != null
-                        ? offlineTarget.getName()
-                        : args[1];
+                String targetName = offlineTarget.getName() != null ? offlineTarget.getName() : args[1];
 
                 // If sender is a player and not OP, only allow self-clear
                 if (sender instanceof Player player) {
@@ -66,10 +55,7 @@ public class ParkourCommand implements CommandExecutor, TabCompleter {
                 plugin.getParkourRepository().clearRecord(uuid, () -> {
                     sender.sendMessage("§aCleared parkour record for " + targetName);
 
-                    String actor = (sender instanceof Player p)
-                            ? p.getName()
-                            : "Console";
-
+                    String actor = (sender instanceof Player p) ? p.getName() : "Console";
                     plugin.getParkourLogger().info(
                             "Parkour record cleared for " + targetName + " by " + actor
                     );
@@ -90,29 +76,24 @@ public class ParkourCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    // Tab completion
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
         List<String> subcommands = List.of("clear", "leaderboard");
 
         if (args.length == 1) {
-            // suggest subcommands
             String typed = args[0].toLowerCase();
-
             for (String sub : subcommands) {
-                if (sub.startsWith(typed)) {
-                    completions.add(sub);
-                }
+                if (sub.startsWith(typed)) completions.add(sub);
             }
 
         } else if (args.length == 2 && args[0].equalsIgnoreCase("clear")) {
-            // op tab-complete player names for /parkour clear <player>
             if (sender instanceof Player player && player.isOp()) {
                 String typed = args[1].toLowerCase();
                 for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
-                    if (p.getName().toLowerCase().startsWith(typed)) {
-                        completions.add(p.getName());
+                    String name = p.getName();
+                    if (name != null && name.toLowerCase().startsWith(typed)) {
+                        completions.add(name);
                     }
                 }
             }
