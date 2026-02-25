@@ -13,6 +13,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -70,6 +71,7 @@ public class ControlItemService {
         playSound(player, Sound.ENTITY_PLAYER_LEVELUP);
     }
 
+    // called when player restarts parkour
     public void handleRestart(Player player, Runnable teleportCallback) {
         UUID uuid = player.getUniqueId();
 
@@ -93,8 +95,16 @@ public class ControlItemService {
 
         sendMessage(player, plugin.getConfig().getString("messages.reset", "&cTimer reset!"));
 
-        // callback to teleport player (listener decides how)
-        if (teleportCallback != null) teleportCallback.run();
+        // callback to teleport player
+        if (teleportCallback != null) {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                teleportCallback.run();
+
+                // cancel any fall damage
+                player.setFallDistance(0);
+                player.setVelocity(new Vector(0, 0, 0));
+            });
+        }
     }
 
     public void handleCancel(Player player) {
