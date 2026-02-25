@@ -114,7 +114,11 @@ public class ParkourRepository {
                 while (rs.next()) {
                     String name = rs.getString("player_name");
                     long time = rs.getLong("time_ms");
-                    sb.append(rank).append(". ").append(name).append(" - ").append(time).append("ms\n");
+
+                    // use the new leaderboard format
+                    String formattedTime = TimeFormatter.formatLeaderboard(time);
+
+                    sb.append(rank).append(". ").append(name).append(" - ").append(formattedTime).append("\n");
                     rank++;
                 }
             } catch (SQLException e) {

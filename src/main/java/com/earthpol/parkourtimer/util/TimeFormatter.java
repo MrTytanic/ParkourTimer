@@ -25,4 +25,14 @@ public class TimeFormatter {
 
         return sb.toString().trim();
     }
+
+    // leaderboard format
+    public static String formatLeaderboard(long ms) {
+        long totalSeconds = ms / 1000;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        long milliseconds = ms % 1000;
+
+        return String.format("%dm %ds %dms", minutes, seconds, milliseconds);
+    }
 }
