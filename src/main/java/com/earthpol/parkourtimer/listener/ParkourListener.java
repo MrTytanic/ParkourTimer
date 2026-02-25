@@ -24,13 +24,15 @@ public class ParkourListener implements Listener {
 
     private final Set<UUID> watchedPlayers = new HashSet<>();
     private Location resetLocation;
+    private Location startLocation;
+    private Location endLocation;
 
     public ParkourListener(ParkourTimer plugin) {
         this.plugin = plugin;
         this.timerManager = plugin.getTimerManager();
         this.controlService = new ControlItemService(plugin);
-
-        loadResetLocation();
+        
+        loadLocations();
     }
 
     // parkour movement
@@ -40,10 +42,19 @@ public class ParkourListener implements Listener {
 
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+        Location toBlock = event.getTo().getBlock().getLocation();
 
-        if (!watchedPlayers.contains(uuid) || !timerManager.isRunning(uuid)) return;
+        // START CHECK
+        if (!timerManager.isRunning(uuid) && isSameBlock(toBlock, startLocation)) {
+            watchedPlayers.add(uuid);
+            timerManager.start(uuid);
+            plugin.getParkourLogger().player(uuid, player.getName(), "START_RUN");
+            controlService.handleStart(player);
+            return;
+        }
 
-        if (event.getTo().getBlock().getType() == Material.HEAVY_WEIGHTED_PRESSURE_PLATE) {
+        // FINISH CHECK
+        if (watchedPlayers.contains(uuid) && timerManager.isRunning(uuid) && isSameBlock(toBlock, endLocation)) {
             long time = timerManager.stop(uuid);
             watchedPlayers.remove(uuid);
 
@@ -52,7 +63,6 @@ public class ParkourListener implements Listener {
 
             // delegate messaging and sound
             controlService.handleFinish(player, time);
-
             controlService.removeControlItems(player);
         }
     }
@@ -64,24 +74,6 @@ public class ParkourListener implements Listener {
         UUID uuid = player.getUniqueId();
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        // start timer
-        if (event.getAction() == Action.PHYSICAL &&
-                event.getClickedBlock() != null &&
-                event.getClickedBlock().getType() == Material.LIGHT_WEIGHTED_PRESSURE_PLATE) {
-
-            if (timerManager.isRunning(uuid)) return;
-
-            watchedPlayers.add(uuid);
-            timerManager.start(uuid);
-            plugin.getParkourLogger().player(uuid, player.getName(), "START_RUN");
-
-            // delegate messaging, sound, and control items
-            controlService.handleStart(player);
-
-            return;
-        }
-
-        // control items
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (item.getType() == Material.AIR || !timerManager.isRunning(uuid) || !controlService.isControlItem(item)) return;
 
@@ -131,7 +123,8 @@ public class ParkourListener implements Listener {
         if (resetLocation != null) player.teleport(resetLocation);
     }
 
-    private void loadResetLocation() {
+    private void loadLocations() {
+        // reset location
         World world = Bukkit.getWorld(plugin.getConfig().getString("reset_location.world", ""));
         if (world != null) {
             resetLocation = new Location(
@@ -143,5 +136,35 @@ public class ParkourListener implements Listener {
                     (float) plugin.getConfig().getDouble("reset_location.pitch")
             );
         }
+
+        // Start location
+        World startWorld = Bukkit.getWorld(plugin.getConfig().getString("start_location.world", ""));
+        if (startWorld != null) {
+            startLocation = new Location(
+                    startWorld,
+                    plugin.getConfig().getDouble("start_location.x"),
+                    plugin.getConfig().getDouble("start_location.y"),
+                    plugin.getConfig().getDouble("start_location.z")
+            );
+        }
+
+        // End location
+        World endWorld = Bukkit.getWorld(plugin.getConfig().getString("end_location.world", ""));
+        if (endWorld != null) {
+            endLocation = new Location(
+                    endWorld,
+                    plugin.getConfig().getDouble("end_location.x"),
+                    plugin.getConfig().getDouble("end_location.y"),
+                    plugin.getConfig().getDouble("end_location.z")
+            );
+        }
+    }
+
+    private boolean isSameBlock(Location a, Location b) {
+        if (a == null || b == null) return false;
+        return a.getWorld().equals(b.getWorld())
+                && a.getBlockX() == b.getBlockX()
+                && a.getBlockY() == b.getBlockY()
+                && a.getBlockZ() == b.getBlockZ();
     }
 }

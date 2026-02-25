@@ -13,6 +13,18 @@ reset_location:
   yaw: -90
   pitch: 0
 
+start_location:
+  world: world
+  x: 0.5
+  y: 63
+  z: 0.5
+
+end_location:
+  world: world
+  x: 0.5
+  y: 63
+  z: 0.5
+
 messages:
   start: "&aParkour Started!"
   complete: "&bYou completed the Parkour in &e{time}&b!"
