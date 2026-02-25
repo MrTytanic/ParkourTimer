@@ -19,8 +19,7 @@ public class ParkourRepository {
         this.database = database;
     }
 
-    // saves asynchronously + updates only if it's a new personal best
-
+    // saves asynchronously + updates name always, time only if new PB
     public void saveRun(UUID uuid, String playerName, long timeMs) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try (Connection conn = database.getConnection()) {
@@ -33,15 +32,25 @@ public class ParkourRepository {
 
                 if (rs.next()) {
                     long existingTime = rs.getLong("time_ms");
+
+                    // always update player name in case they changed it
+                    PreparedStatement updateName = conn.prepareStatement(
+                            "UPDATE time_records SET player_name = ? WHERE uuid = ?"
+                    );
+                    updateName.setString(1, playerName);
+                    updateName.setString(2, uuid.toString());
+                    updateName.executeUpdate();
+
+                    // update PB if new time is better
                     if (timeMs < existingTime) {
                         // new personal best
-                        PreparedStatement update = conn.prepareStatement(
-                                "UPDATE time_records SET time_ms = ?, recorded_at = NOW(), player_name = ? WHERE uuid = ?"
+                        PreparedStatement updatePB = conn.prepareStatement(
+                                "UPDATE time_records SET time_ms = ?, recorded_at = NOW() WHERE uuid = ?"
                         );
-                        update.setLong(1, timeMs);
-                        update.setString(2, playerName);
-                        update.setString(3, uuid.toString());
-                        update.executeUpdate();
+                        updatePB.setLong(1, timeMs);
+                        updatePB.setString(2, uuid.toString());
+                        updatePB.executeUpdate();
+
                         plugin.getLogger().info("New personal best for " + playerName + ": " + timeMs + "ms");
 
                         // personal best message
@@ -55,6 +64,7 @@ public class ParkourRepository {
                             }
                         });
                     }
+
                 } else {
                     // first-time record
                     PreparedStatement insert = conn.prepareStatement(
@@ -66,6 +76,7 @@ public class ParkourRepository {
                     insert.executeUpdate();
                     plugin.getLogger().info("First record for " + playerName + ": " + timeMs + "ms");
                 }
+
             } catch (SQLException e) {
                 plugin.getLogger().warning("Failed to save parkour run for " + playerName + ": " + e.getMessage());
                 e.printStackTrace();
@@ -79,9 +90,9 @@ public class ParkourRepository {
             try (Connection conn = database.getConnection()) {
                 PreparedStatement stmt = conn.prepareStatement("DELETE FROM time_records WHERE uuid = ?");
                 stmt.setString(1, uuid.toString());
-                int deleted = stmt.executeUpdate();
+                stmt.executeUpdate();
 
-                Bukkit.getScheduler().runTask(plugin, () -> callback.run());
+                Bukkit.getScheduler().runTask(plugin, callback);
             } catch (SQLException e) {
                 plugin.getLogger().warning("Failed to clear parkour record for " + uuid + ": " + e.getMessage());
             }

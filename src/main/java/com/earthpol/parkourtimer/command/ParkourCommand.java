@@ -7,6 +7,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.OfflinePlayer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,37 +36,45 @@ public class ParkourCommand implements CommandExecutor, TabCompleter {
 
         switch (sub) {
             case "clear" -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage("§cOnly players can clear parkour records!");
+
+                if (args.length < 2) {
+                    sender.sendMessage("§cUsage: /parkour clear <player>");
                     return true;
                 }
 
-                Player target;
-                if (args.length < 2) {
-                    // if no player specified, target is themselves
-                    target = player;
-                } else {
-                    target = Bukkit.getPlayer(args[1]);
-                    if (target == null) {
-                        sender.sendMessage("§cPlayer not found!");
-                        return true;
-                    }
+                OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(args[1]);
 
-                    // if trying to clear someone else, check OP
-                    if (!player.isOp() && !target.getUniqueId().equals(player.getUniqueId())) {
+                if (offlineTarget == null ||
+                        (!offlineTarget.hasPlayedBefore() && !offlineTarget.isOnline())) {
+                    sender.sendMessage("§cPlayer not found!");
+                    return true;
+                }
+
+                UUID uuid = offlineTarget.getUniqueId();
+                String targetName = offlineTarget.getName() != null
+                        ? offlineTarget.getName()
+                        : args[1];
+
+                // If sender is a player and not OP, only allow self-clear
+                if (sender instanceof Player player) {
+                    if (!player.isOp() && !player.getUniqueId().equals(uuid)) {
                         sender.sendMessage("§cYou can only clear your own parkour record!");
                         return true;
                     }
                 }
 
-                UUID uuid = target.getUniqueId();
                 plugin.getParkourRepository().clearRecord(uuid, () -> {
-                    sender.sendMessage("§aCleared parkour record for " + target.getName());
+                    sender.sendMessage("§aCleared parkour record for " + targetName);
 
-                    // log the clear action
-                    String actor = player.getName();
-                    plugin.getParkourLogger().info("Parkour record cleared for " + target.getName() + " by " + actor);
+                    String actor = (sender instanceof Player p)
+                            ? p.getName()
+                            : "Console";
+
+                    plugin.getParkourLogger().info(
+                            "Parkour record cleared for " + targetName + " by " + actor
+                    );
                 });
+
                 return true;
             }
 
@@ -101,7 +110,7 @@ public class ParkourCommand implements CommandExecutor, TabCompleter {
             // op tab-complete player names for /parkour clear <player>
             if (sender instanceof Player player && player.isOp()) {
                 String typed = args[1].toLowerCase();
-                for (Player p : Bukkit.getOnlinePlayers()) {
+                for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
                     if (p.getName().toLowerCase().startsWith(typed)) {
                         completions.add(p.getName());
                     }
