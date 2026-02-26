@@ -67,6 +67,9 @@ public class ParkourListener implements Listener {
                     // send message from config
                     String msg = plugin.getConfig().getString("messages.checkpoint", "&aNew checkpoint reached!");
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
+                    player.playSound(
+                            player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS,1f, 1f
+                    );
                 }
                 break;
             }
