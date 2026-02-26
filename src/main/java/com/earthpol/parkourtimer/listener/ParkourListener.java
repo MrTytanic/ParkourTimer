@@ -59,12 +59,22 @@ public class ParkourListener implements Listener {
         }
 
         // checkpoints
-        for (Location checkpoint : checkpoints) {
+        if (!timerManager.isRunning(uuid) || !watchedPlayers.contains(uuid)) {
+            return;
+        }
+
+        for (int i = 0; i < checkpoints.size(); i++) {
+            Location checkpoint = checkpoints.get(i);
+
             if (isSameBlock(toBlock, checkpoint)) {
                 if (!checkpoint.equals(lastCheckpoint.get(uuid))) {
+
                     lastCheckpoint.put(uuid, checkpoint);
 
-                    // send message from config
+                    // send message from config + log event
+                    int checkpointNumber = i + 1;
+                    plugin.getParkourLogger().player(uuid, player.getName(), "CHECKPOINT_" + checkpointNumber);
+
                     String msg = plugin.getConfig().getString("messages.checkpoint", "&aNew checkpoint reached!");
                     player.sendMessage(ChatColor.translateAlternateColorCodes('&', msg));
                     player.playSound(
