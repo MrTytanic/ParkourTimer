@@ -5,7 +5,8 @@ A simple plugin that provides a parkour timer with action bar updates for Paper-
 ---
 
 ## Features
-- Start/stop timers when stepping on pressure plates
+- Start/stop timers
+- Checkpoints
 - Action bar timer display
 - Restart/cancel timer using inventory control items
 - Timeout handling if maximum parkour time is exceeded
@@ -60,7 +61,7 @@ database:
 - **API Version:** 1.20  
 
 ## Planned Features
-- Leaderboards
+- Hologram Leaderboards
 - Challenge Mode
 - Multiple Configurable Courses
 
